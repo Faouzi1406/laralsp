@@ -48,9 +48,11 @@ impl Buffer {
         let mut node = Some(node);
         while let Some(parent) = node {
             node = parent.parent();
+            println!("{:#?}", node);
 
             match parent.kind() {
                 "function_call_expression" => {
+
                     let mut tree_cursor = parent.walk();
                     let children = parent.children(&mut tree_cursor);
 
@@ -59,6 +61,7 @@ impl Buffer {
                             return Some(&self.text[node.start_byte()..node.end_byte()]);
                         }
                     }
+                    return None;
                 }
                 "scoped_call_expression" => {
                     let mut tree_cursor = parent.walk();
@@ -69,6 +72,19 @@ impl Buffer {
                             continue;
                         };
                         if node.kind() == "name" && prev.kind() == "::" {
+                            return Some(&self.text[node.start_byte()..node.end_byte()]);
+                        }
+                    }
+                }
+                "member_call_expression" => {
+                    let mut tree_cursor = parent.walk();
+                    let children = parent.children(&mut tree_cursor);
+
+                    for node in children {
+                        let Some(prev) = node.prev_sibling() else {
+                            continue;
+                        };
+                        if node.kind() == "name" && prev.kind() == "->" {
                             return Some(&self.text[node.start_byte()..node.end_byte()]);
                         }
                     }
@@ -106,6 +122,7 @@ pub mod test_buffer {
         route('h');
 
         DB::table('faouzi');
+        DB::table('faouzi')->select('testing');
             ";
 
         let buffer = super::Buffer::new(str.to_string()).unwrap();
@@ -121,6 +138,12 @@ pub mod test_buffer {
             column: 22,
         };
         assert_eq!(buffer.get_function_call(point), Some("table"));
+
+        let point = tree_sitter::Point {
+            row: 20,
+            column: 37,
+        };
+        assert_eq!(buffer.get_function_call(point), Some("select"));
     }
 
     #[test]

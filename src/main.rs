@@ -1,4 +1,5 @@
 use laralsp::actions::completion::Completion;
+use laralsp::actions::snippets::get_snippets;
 use laralsp::buffer::Buffer;
 use laralsp::{DOCUMENT_STATE, PROJECT_CONFIG};
 use tower_lsp::jsonrpc::Result;
@@ -103,8 +104,12 @@ impl LanguageServer for Backend {
             column: document_position.character as usize - 1,
         };
 
-        let completion = buffer.complete(point);
-        Ok(completion.unwrap())
+         match buffer.complete(point) {
+            Ok(completion) if completion.is_some() =>{
+                Ok(completion)
+            }
+            _ => Ok(Some(get_snippets())) 
+        }
     }
 }
 
