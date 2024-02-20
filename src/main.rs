@@ -67,16 +67,16 @@ impl LanguageServer for Backend {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let document = params.text_document;
-        match &mut DOCUMENT_STATE.lock() {
-            Ok(locked) => locked.insert_state(document.uri, Buffer::new(document.text).unwrap()),
-            Err(_) => (),
+        let Ok(mut document_state) = DOCUMENT_STATE.try_lock() else {
+            return;
         };
+        document_state.insert_state(document.uri, Buffer::new(document.text).unwrap())
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let document = params.text_document;
 
-        let Ok(mut documents) = DOCUMENT_STATE.lock() else {
+        let Ok(mut documents) = DOCUMENT_STATE.try_lock() else {
             return;
         };
 
@@ -85,10 +85,10 @@ impl LanguageServer for Backend {
             .iter()
             .for_each(|change| documents.update_state(&document.uri, change.text.clone()));
 
-        match PROJECT_CONFIG.lock() {
+        match PROJECT_CONFIG.try_lock() {
             Ok(mut lock) => lock.should_update_config(document.uri),
             Err(_) => {
-                PROJECT_CONFIG.clear_poison();
+                return;
             }
         }
     }

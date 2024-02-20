@@ -1,5 +1,5 @@
 use tower_lsp::lsp_types::{CompletionItem, CompletionResponse};
-use tree_sitter::Point;
+use tree_sitter::{Node, Point};
 
 use crate::{buffer::Buffer, types::languages};
 
@@ -10,8 +10,11 @@ pub trait Completion {
 pub type CompletionFunction = fn() -> anyhow::Result<CompletionResponse>;
 
 fn complete_routes() -> anyhow::Result<CompletionResponse> {
-    let routes = &crate::PROJECT_CONFIG.lock().unwrap().routes;
+    let Ok(config) = &crate::PROJECT_CONFIG.try_lock() else {
+        return Err(anyhow::anyhow!("Was unable to lock config."));
+    };
 
+    let routes = &config.routes;
     let completions = routes
         .into_iter()
         .filter(|route| route.name.is_some())
@@ -26,13 +29,25 @@ fn complete_routes() -> anyhow::Result<CompletionResponse> {
     Ok(CompletionResponse::Array(completions))
 }
 
+fn complete_tables() -> anyhow::Result<CompletionResponse> {
+    todo!("Table completion");
+}
+
 fn get_completion_function(
     language: &languages::Language,
     function: &str,
+    ctx_node: Option<Node>,
 ) -> Option<CompletionFunction> {
     match language {
         languages::Language::PHP => match function {
-            "route" => Some(complete_routes),
+            // Laravel route() function
+            "route" => {
+                if ctx_node?.kind() == "string_value" {
+                    None
+                } else {
+                    Some(complete_routes)
+                }
+            }
             _ => None,
         },
     }
@@ -42,12 +57,12 @@ impl Completion for Buffer {
     fn complete(&self, point: Point) -> anyhow::Result<Option<CompletionResponse>> {
         match &self.language {
             languages::Language::PHP => {
-                let function = match self.get_function(point) {
+                let function = match self.get_function_call(point) {
                     Some(func) => func,
                     None => return Ok(None),
                 };
 
-                let completion_function = match get_completion_function(&self.language, function) {
+                let completion_function = match get_completion_function(&self.language, function, self.get_node_at_point(point)) {
                     Some(func) => func,
                     None => return Ok(None),
                 };

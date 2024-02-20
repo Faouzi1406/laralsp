@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use tower_lsp::lsp_types::{Position, Url};
-use tree_sitter::{InputEdit, Point};
+use tower_lsp::lsp_types::Url;
 
 use crate::buffer::Buffer;
 
