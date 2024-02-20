@@ -4,9 +4,12 @@ use tower_lsp::lsp_types::Url;
 
 use crate::laravel::routes::Route;
 
+use super::tables::Tables;
+
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct ProjectConfig {
     pub routes: Vec<Route>,
+    pub tables: Tables,
 }
 
 const CONFIG_FILES: [&'static str; 1] = ["web.php"];
@@ -15,6 +18,7 @@ impl ProjectConfig {
     pub fn new() -> Self {
         ProjectConfig {
             routes: Route::get().unwrap_or(Vec::new()),
+            tables: Tables::get().unwrap_or(Tables { tables: Vec::new() }),
         }
     }
 

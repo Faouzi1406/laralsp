@@ -45,7 +45,7 @@ impl Buffer {
     pub fn get_function_call(&self, point: tree_sitter::Point) -> Option<&str> {
         let node = self.get_node_at_point(point)?;
 
-        let mut node = node.parent();
+        let mut node = Some(node);
         while let Some(parent) = node {
             node = parent.parent();
 
@@ -56,6 +56,19 @@ impl Buffer {
 
                     for node in children {
                         if node.kind() == "name" {
+                            return Some(&self.text[node.start_byte()..node.end_byte()]);
+                        }
+                    }
+                }
+                "scoped_call_expression" => {
+                    let mut tree_cursor = parent.walk();
+                    let children = parent.children(&mut tree_cursor);
+
+                    for node in children {
+                        let Some(prev) = node.prev_sibling() else {
+                            continue;
+                        };
+                        if node.kind() == "name" && prev.kind() == "::" {
                             return Some(&self.text[node.start_byte()..node.end_byte()]);
                         }
                     }
@@ -90,15 +103,24 @@ pub mod test_buffer {
         Route::get('/', function () {
             return view('welcome');
         })->name(\"homepage\");
-        route('h')";
+        route('h');
+
+        DB::table('faouzi');
+            ";
 
         let buffer = super::Buffer::new(str.to_string()).unwrap();
         let point = tree_sitter::Point {
             row: 17,
-            column: 15,
+           column: 15,
         };
 
         assert_eq!(buffer.get_function_call(point), Some("route"));
+
+        let point = tree_sitter::Point {
+            row: 19,
+            column: 22,
+        };
+        assert_eq!(buffer.get_function_call(point), Some("table"));
     }
 
     #[test]

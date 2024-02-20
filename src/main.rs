@@ -14,12 +14,6 @@ struct Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, init: InitializeParams) -> Result<InitializeResult> {
-        self.client
-            .show_message(
-                MessageType::ERROR,
-                format!(": -> {:#?}", PROJECT_CONFIG.lock().unwrap()),
-            )
-            .await;
         Ok(InitializeResult {
             server_info: None,
             capabilities: ServerCapabilities {
