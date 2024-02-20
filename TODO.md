@@ -10,7 +10,7 @@
 
 ## Database completion
 
-- List database tables when using `DB::table()` []
+- List database tables when using `DB::table()` [x]
 - List database columns when using `DB::table()->select()` []
 - List database columns when using `DB::table()->where()` []
 - List database columns when using `DB::table()->where()->get()` []
@@ -43,3 +43,8 @@
 
 -- List all php functions []
 -- Complete variables even when no $ is used []
+
+## Go to definitions
+
+- Tables []
+- Routes -> controller
