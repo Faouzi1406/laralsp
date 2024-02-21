@@ -27,7 +27,10 @@ fn complete_routes() -> anyhow::Result<CompletionResponse> {
         .into_iter()
         .filter(|route| route.name.is_some())
         .map(|route| {
-            new_item(route.name.clone().unwrap_or("".to_string()), route.route_description())
+            new_item(
+                route.name.clone().unwrap_or("".to_string()),
+                route.route_description(),
+            )
         })
         .collect();
 
@@ -75,6 +78,13 @@ fn get_completion_function(
             "table" => {
                 if ctx_node?.kind() == "string_value" {
                     Some(complete_tables)
+                } else {
+                    None
+                }
+            }
+            "select" => {
+                if ctx_node?.kind() == "string_value" {
+                    None
                 } else {
                     None
                 }

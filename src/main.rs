@@ -1,5 +1,5 @@
 use laralsp::actions::completion::Completion;
-use laralsp::actions::snippets::get_snippets;
+use laralsp::actions::snippets::SnippetEngine;
 use laralsp::buffer::Buffer;
 use laralsp::{DOCUMENT_STATE, PROJECT_CONFIG};
 use tower_lsp::jsonrpc::Result;
@@ -65,7 +65,10 @@ impl LanguageServer for Backend {
         let Ok(mut document_state) = DOCUMENT_STATE.try_lock() else {
             return;
         };
-        document_state.insert_state(document.uri, Buffer::new(document.text).unwrap())
+        document_state.insert_state(
+            document.uri.clone(),
+            Buffer::new(document.text, document.uri).unwrap(),
+        )
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
@@ -104,11 +107,9 @@ impl LanguageServer for Backend {
             column: document_position.character as usize - 1,
         };
 
-         match buffer.complete(point) {
-            Ok(completion) if completion.is_some() =>{
-                Ok(completion)
-            }
-            _ => Ok(Some(get_snippets())) 
+        match buffer.complete(point) {
+            Ok(completion) if completion.is_some() => Ok(completion),
+            _ => Ok(Some(buffer.get_snippets())),
         }
     }
 }

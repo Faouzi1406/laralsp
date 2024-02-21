@@ -1,9 +1,11 @@
-use tree_sitter::Parser;
+use tower_lsp::lsp_types::Url;
+use tree_sitter::{Parser, Point};
 use tree_sitter_php::language_php;
 
 use crate::types::languages;
 
 pub struct Buffer {
+    pub uri: Url,
     pub language: languages::Language,
     pub parser: Parser,
     pub text: String,
@@ -13,11 +15,12 @@ pub struct Buffer {
 pub struct CurrentBuffer(pub Option<Buffer>);
 
 impl Buffer {
-    pub fn new(text: String) -> anyhow::Result<Self> {
+    pub fn new(text: String, uri: Url) -> anyhow::Result<Self> {
         let mut parser = Parser::new();
         parser.set_language(language_php())?;
         match parser.parse(&text, None) {
             Some(tree) => Ok(Buffer {
+                uri,
                 language: languages::Language::PHP,
                 parser,
                 text,
@@ -41,18 +44,44 @@ impl Buffer {
         }
     }
 
+    /// If inside of a member call expression, it will get the scoped call node arguments, ath n
+    /// position
+    pub fn get_member_scoped_call_args(
+        &self,
+        point: Point,
+        scoped_call_name: String,
+        n: usize,
+    ) -> Option<&str> {
+        let mut node = self.get_node_at_point(point);
+        while let Some(parent) = node {
+            node = parent.parent();
+            
+            match parent.kind() {
+                "member_call_expression" => {
+                    let mut cursor = parent.walk();
+                    let parent = parent.parent()?;
+
+                    for node in parent.children(&mut cursor){
+                        
+                    }
+
+                }
+                _ => continue
+            }
+        }
+        None
+    }
+
     /// Returns the function name if the point is inside a function call.
     pub fn get_function_call(&self, point: tree_sitter::Point) -> Option<&str> {
-        let node = self.get_node_at_point(point)?;
+        let mut node = self.get_node_at_point(point);
 
-        let mut node = Some(node);
         while let Some(parent) = node {
             node = parent.parent();
             println!("{:#?}", node);
 
             match parent.kind() {
                 "function_call_expression" => {
-
                     let mut tree_cursor = parent.walk();
                     let children = parent.children(&mut tree_cursor);
 
@@ -91,7 +120,6 @@ impl Buffer {
                 }
                 _ => continue,
             }
-
         }
 
         None
@@ -128,7 +156,7 @@ pub mod test_buffer {
         let buffer = super::Buffer::new(str.to_string()).unwrap();
         let point = tree_sitter::Point {
             row: 17,
-           column: 15,
+            column: 15,
         };
 
         assert_eq!(buffer.get_function_call(point), Some("route"));
